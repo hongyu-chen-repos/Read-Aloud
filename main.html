@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Read Aloud</title>
+<style>
+  :root{
+    --bg:#faf8f4; --card:#ffffff; --fg:#22211f; --muted:#75716a; --border:#e5e1d8;
+    --accent:#0f766e; --accent-soft:rgba(15,118,110,.12); --accent-strong:rgba(15,118,110,.26);
+    --danger:#b4232a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#15171b; --card:#1e2126; --fg:#e9e7e2; --muted:#9a968e; --border:#32363d;
+      --accent:#2dd4bf; --accent-soft:rgba(45,212,191,.15); --accent-strong:rgba(45,212,191,.30);
+      --danger:#f2777d;
+    }
+  }
+  *{ box-sizing:border-box; }
+  html, body{ margin:0; }
+  body{ background:var(--bg); color:var(--fg); font-family:system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .wrap{ max-width:760px; margin:0 auto; padding:0 20px 90px; }
+  header.page{ padding:26px 0 8px; }
+  header.page h1{ font-size:1.3rem; margin:0 0 4px; letter-spacing:.2px; }
+  header.page p{ margin:0; color:var(--muted); font-size:.9rem; }
+  .hidden{ display:none !important; }
+
+  #toolbar{
+    position:sticky; top:0; z-index:5;
+    background:var(--bg);
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+    padding:10px 0 0; display:none;
+  }
+  .row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .row.meta{ justify-content:space-between; padding:6px 0 8px; font-size:.85rem; color:var(--muted); }
+  .btn{
+    border:1px solid var(--border); background:var(--card); color:var(--fg);
+    padding:8px 14px; border-radius:9px; font-size:.9rem; cursor:pointer;
+  }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--card); min-width:88px; font-weight:600; }
+  .ctl{ display:flex; align-items:center; gap:6px; font-size:.85rem; color:var(--muted); }
+  #rate{ width:110px; accent-color:var(--accent); }
+  #voice{ max-width:240px; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--fg); font-size:.85rem; }
+  .linklike{ background:none; border:none; color:var(--accent); cursor:pointer; font-size:.85rem; padding:0; }
+  #track{ height:3px; background:var(--accent-soft); overflow:hidden; }
+  #bar{ height:100%; width:0%; background:var(--accent); transition:width .3s; }
+
+  #dropzone{
+    border:2px dashed var(--border); border-radius:14px; background:var(--card);
+    padding:48px 24px; text-align:center; cursor:pointer; margin-top:18px;
+  }
+  #dropzone.drag{ border-color:var(--accent); background:var(--accent-soft); }
+  #dropzone .big{ font-size:1.05rem; font-weight:600; margin-bottom:6px; }
+  #dropzone .sub{ color:var(--muted); font-size:.9rem; }
+  details{ margin-top:14px; }
+  summary{ cursor:pointer; color:var(--muted); font-size:.9rem; }
+  textarea{
+    width:100%; margin:10px 0; padding:10px; border:1px solid var(--border); border-radius:9px;
+    background:var(--card); color:var(--fg); font:inherit; font-size:.95rem;
+  }
+  .tip{ color:var(--muted); font-size:.85rem; margin-top:16px; line-height:1.55; }
+
+  #status{ margin:14px 0 0; font-size:.92rem; color:var(--muted); min-height:1.3em; }
+  #status.err{ color:var(--danger); }
+  #docmeta{ margin-top:6px; font-size:.85rem; color:var(--muted); }
+
+  article{
+    font-family:Georgia, "Times New Roman", "Songti SC", "Noto Serif CJK SC", serif;
+    font-size:1.16rem; line-height:1.95; padding-top:18px;
+  }
+  article p{ margin:0 0 1.1em; }
+  .sent{ cursor:pointer; border-radius:4px; padding:1px 2px; }
+  .sent:hover{ background:var(--accent-soft); }
+  .sent.active{ background:var(--accent-strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <h1>Read Aloud</h1>
+    <p>A free offline reader for Word documents and any text you paste. Nothing is uploaded anywhere.</p>
+  </header>
+
+  <div id="toolbar">
+    <div class="row">
+      <button id="playBtn" class="btn primary">Play</button>
+      <button id="backBtn" class="btn" title="Previous sentence">Back</button>
+      <button id="fwdBtn" class="btn" title="Next sentence">Next</button>
+      <button id="restartBtn" class="btn">Restart</button>
+      <label class="ctl">Speed <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1"><span id="rateVal">1.0×</span></label>
+      <label class="ctl">Voice <select id="voice"></select></label>
+    </div>
+    <div class="row meta">
+      <span id="progressText"></span>
+      <button id="newDoc" class="linklike">Load another document</button>
+    </div>
+    <div id="track"><div id="bar"></div></div>
+  </div>
+
+  <section id="loader">
+    <div id="dropzone">
+      <div class="big">Drop your Word document here or click to choose a file</div>
+      <div class="sub">Accepts docx, txt, and md files. The text stays on your computer.</div>
+      <input type="file" id="fileInput" accept=".docx,.txt,.md,.text" hidden>
+    </div>
+    <details>
+      <summary>Paste text instead</summary>
+      <textarea id="pasteArea" rows="8" placeholder="Paste the article text here"></textarea>
+      <button id="pasteBtn" class="btn">Load pasted text</button>
+    </details>
+    <p class="tip">Tip. Microsoft Edge includes free natural sounding voices. Safari offers the best system voices on a Mac. More voices can be installed in your device speech settings. Space toggles play and pause, and the arrow keys move between sentences.</p>
+  </section>
+
+  <div id="status"></div>
+  <div id="docmeta"></div>
+  <article id="article"></article>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/*CORE-START*/
+async function inflateRaw(u8){
+  if (typeof DecompressionStream === 'undefined'){
+    throw new Error('This browser is too old to unpack docx files. Please update the browser or paste the text instead.');
+  }
+  var ds = new DecompressionStream('deflate-raw');
+  var stream = new Blob([u8]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function decodeEntities(s){
+  return s.replace(/&(amp|lt|gt|quot|apos|#x?[0-9a-fA-F]+);/g, function(m, e){
+    if (e === 'amp') return '&';
+    if (e === 'lt') return '<';
+    if (e === 'gt') return '>';
+    if (e === 'quot') return '"';
+    if (e === 'apos') return "'";
+    if (e.charAt(0) === '#'){
+      var hex = e.charAt(1) === 'x' || e.charAt(1) === 'X';
+      var n = parseInt(e.slice(hex ? 2 : 1), hex ? 16 : 10);
+      if (isFinite(n) && n >= 0 && n <= 0x10FFFF){ try{ return String.fromCodePoint(n); }catch(err){ return m; } }
+    }
+    return m;
+  });
+}
+
+function docxXmlToText(xml){
+  var lines = [];
+  var paras = xml.split('</w:p>');
+  var re = /<w:(tab|br|cr|t)(?=[\s\/>])[^>]*(?:\/>|>([\s\S]*?)<\/w:\1>)/g;
+  for (var i = 0; i < paras.length; i++){
+    var s = '';
+    var m;
+    re.lastIndex = 0;
+    while ((m = re.exec(paras[i])) !== null){
+      if (m[1] === 't') s += decodeEntities(m[2] || '');
+      else if (m[1] === 'tab') s += '  ';
+      else s += '\n';
+    }
+    s = s.trim();
+    if (s) lines.push(s);
+  }
+  return lines.join('\n');
+}
+
+async function extractDocxText(buf){
+  var dv = new DataView(buf);
+  var u8 = new Uint8Array(buf);
+  var len = buf.byteLength;
+  var eocd = -1;
+  var stop = Math.max(0, len - 65558);
+  for (var i = len - 22; i >= stop; i--){
+    if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('This file does not look like a docx package.');
+  var count = dv.getUint16(eocd + 10, true);
+  var off = dv.getUint32(eocd + 16, true);
+  var found = null;
+  var dec = new TextDecoder('utf-8');
+  for (var k = 0; k < count && off + 46 <= len; k++){
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    var method = dv.getUint16(off + 10, true);
+    var csize = dv.getUint32(off + 20, true);
+    var nlen = dv.getUint16(off + 28, true);
+    var elen = dv.getUint16(off + 30, true);
+    var clen = dv.getUint16(off + 32, true);
+    var lho = dv.getUint32(off + 42, true);
+    var name = dec.decode(u8.subarray(off + 46, off + 46 + nlen));
+    if (name === 'word/document.xml'){ found = { method: method, csize: csize, lho: lho }; break; }
+    off += 46 + nlen + elen + clen;
+  }
+  if (!found) throw new Error('No document body was found inside this file.');
+  if (dv.getUint32(found.lho, true) !== 0x04034b50) throw new Error('The docx package appears damaged.');
+  var nlen2 = dv.getUint16(found.lho + 26, true);
+  var elen2 = dv.getUint16(found.lho + 28, true);
+  var start = found.lho + 30 + nlen2 + elen2;
+  var comp = u8.subarray(start, start + found.csize);
+  var xmlBytes;
+  if (found.method === 0){ xmlBytes = comp; }
+  else if (found.method === 8){ xmlBytes = await inflateRaw(comp); }
+  else { throw new Error('Unsupported compression inside the docx file.'); }
+  return docxXmlToText(dec.decode(xmlBytes));
+}
+
+function chunkLong(s){
+  var MAX = 280;
+  var out = [];
+  var rest = s;
+  while (rest.length > MAX){
+    var win = rest.slice(0, MAX);
+    var cut = -1;
+    var m = win.match(/^[\s\S]*[,\uFF0C\u3001;\uFF1B:\uFF1A]\s*/);
+    if (m && m[0].length > 40) cut = m[0].length;
+    if (cut < 0){
+      var sp = win.lastIndexOf(' ');
+      cut = sp > 40 ? sp + 1 : MAX;
+    }
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+
+function splitSentences(text){
+  var guard = "(?<!\\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|No|vs|etc|Fig|al|e\\.g|i\\.e))";
+  var ender = "([.!?]+[\\u201d\\u2019\"')\\]]*)(\\s+)";
+  var enSplit;
+  try{
+    enSplit = new RegExp(guard + ender + "(?=[\\p{Lu}\\p{Lo}\\p{N}\\u201c\\u00BF\\u00A1\"'(\\[])", 'gu');
+  }catch(err){
+    try{
+      enSplit = new RegExp(guard + ender + "(?=[A-Z0-9\\u201c\\u00BF\\u00A1\"'(\\[])", 'g');
+    }catch(err2){
+      enSplit = /([.!?]+[\u201D\u2019"')\]]*)(\s+)(?=[A-Z0-9\u201c\u00BF\u00A1"'(\[])/g;
+    }
+  }
+  var cjkSplit = /([\u3002\uFF01\uFF1F\uFF1B\u2026\u061F\u06D4\u0964\u0965]+[\u201D\u2019\u300D\u300F\uFF09\u3011"')\]]*)/g;
+  var out = [];
+  var paras = text.split(/\n+/);
+  for (var i = 0; i < paras.length; i++){
+    var t = paras[i].trim();
+    if (!t) continue;
+    var marked = t.replace(cjkSplit, '$1\u0000').replace(enSplit, '$1\u0000');
+    var parts = marked.split('\u0000');
+    var expanded = [];
+    for (var j = 0; j < parts.length; j++){
+      var p = parts[j].trim();
+      if (!p) continue;
+      expanded = expanded.concat(chunkLong(p));
+    }
+    for (var k2 = 0; k2 < expanded.length; k2++){
+      out.push({ text: expanded[k2], last: k2 === expanded.length - 1 });
+    }
+  }
+  return out;
+}
+/*CORE-END*/
+
+var $ = function(id){ return document.getElementById(id); };
+var synth = window.speechSynthesis;
+var sentences = [], sentEls = [], idx = 0, playing = false, session = 0;
+var rate = 1, docHash = '', zhDoc = false, voices = [];
+
+function status(msg, isErr){
+  var el = $('status');
+  el.textContent = msg || '';
+  el.className = isErr ? 'err' : '';
+}
+
+function fmtTime(sec){
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  if (sec < 90) return Math.round(sec) + ' sec';
+  return Math.round(sec / 60) + ' min';
+}
+
+function charsPerSec(){ return (zhDoc ? 5.2 : 14.5) * rate; }
+
+function remainingChars(from){
+  var c = 0;
+  for (var i = from; i < sentences.length; i++) c += sentences[i].text.length;
+  return c;
+}
+
+function updateProgress(){
+  if (!sentences.length){ $('progressText').textContent = ''; $('bar').style.width = '0%'; return; }
+  var n = sentences.length;
+  $('bar').style.width = (Math.min(idx, n) / n * 100).toFixed(1) + '%';
+  var left = fmtTime(remainingChars(idx) / charsPerSec());
+  $('progressText').textContent = 'Sentence ' + Math.min(idx + 1, n) + ' of ' + n + ' · about ' + left + ' left';
+}
+
+function voiceScore(v){
+  var s = 0;
+  var lang = (v.lang || '').toLowerCase();
+  var pref = zhDoc ? 'zh' : 'en';
+  if (lang.indexOf(pref) === 0) s += 100;
+  if (/natural|neural|online|siri|premium|enhanced/i.test(v.name)) s += 40;
+  if (/google/i.test(v.name)) s += 12;
+  if (/compact|eloquence|albert|bad news|bahh|bells|boing|bubbles|cellos|wobble|good news|jester|organ|superstar|trinoids|whisper|zarvox|fred|junior|kathy|ralph/i.test(v.name)) s -= 50;
+  return s;
+}
+
+function populateVoices(){
+  var list = synth ? synth.getVoices() : [];
+  if (!list || !list.length) return;
+  voices = list.slice().sort(function(a, b){ return voiceScore(b) - voiceScore(a); });
+  var sel = $('voice');
+  var prev = sel.value || loadSettings().voiceName || '';
+  sel.innerHTML = '';
+  for (var i = 0; i < voices.length; i++){
+    var o = document.createElement('option');
+    o.value = voices[i].name;
+    o.textContent = voices[i].name + ' (' + voices[i].lang + ')';
+    sel.appendChild(o);
+  }
+  var match = null;
+  for (var j = 0; j < voices.length; j++){ if (voices[j].name === prev){ match = voices[j]; break; } }
+  sel.value = match ? match.name : voices[0].name;
+}
+
+function currentVoice(){
+  var name = $('voice').value;
+  for (var i = 0; i < voices.length; i++){ if (voices[i].name === name) return voices[i]; }
+  return null;
+}
+
+function loadSettings(){
+  try{ return JSON.parse(localStorage.getItem('readaloud.settings')) || {}; }catch(e){ return {}; }
+}
+function saveSettings(){
+  try{ localStorage.setItem('readaloud.settings', JSON.stringify({ rate: rate, voiceName: $('voice').value })); }catch(e){}
+}
+function savePos(v){
+  try{ if (docHash) localStorage.setItem('readaloud.pos.' + docHash, String(v)); }catch(e){}
+}
+function loadPos(){
+  try{ return parseInt(localStorage.getItem('readaloud.pos.' + docHash) || '0', 10) || 0; }catch(e){ return 0; }
+}
+
+function updateBtn(){ $('playBtn').textContent = playing ? 'Pause' : 'Play'; }
+
+function speakFrom(i){
+  if (!sentences.length) return;
+  idx = Math.max(0, Math.min(i, sentences.length - 1));
+  playing = true; updateBtn(); highlight();
+  var my = ++session;
+  synth.cancel();
+  setTimeout(function(){ if (my === session && playing) speakCurrent(my); }, 90);
+}
+
+function speakCurrent(my){
+  if (my !== session || !playing) return;
+  if (idx >= sentences.length){ finish(); return; }
+  var u = new SpeechSynthesisUtterance(sentences[idx].text);
+  var v = currentVoice();
+  if (v){ u.voice = v; u.lang = v.lang; }
+  u.rate = rate;
+  u.onend = function(){
+    if (my === session && playing){
+      idx += 1;
+      if (idx < sentences.length) highlight();
+      speakCurrent(my);
+    }
+  };
+  u.onerror = function(e){
+    if (my !== session) return;
+    if (e && (e.error === 'canceled' || e.error === 'interrupted')) return;
+    idx += 1;
+    speakCurrent(my);
+  };
+  synth.speak(u);
+}
+
+function finish(){
+  playing = false; updateBtn();
+  idx = 0; savePos(0);
+  clearActive(); updateProgress();
+  status('Finished reading.');
+}
+
+function pausePlayback(){
+  playing = false; session++;
+  if (synth) synth.cancel();
+  updateBtn();
+}
+
+function toggle(){
+  if (!sentences.length) return;
+  if (playing){ pausePlayback(); status('Paused.'); }
+  else { status(''); speakFrom(idx); }
+}
+
+function step(d){
+  if (!sentences.length) return;
+  var t = Math.max(0, Math.min(idx + d, sentences.length - 1));
+  if (playing) speakFrom(t);
+  else { idx = t; highlight(); }
+}
+
+function clearActive(){
+  var els = document.querySelectorAll('.sent.active');
+  for (var i = 0; i < els.length; i++) els[i].classList.remove('active');
+}
+
+function highlight(){
+  clearActive();
+  var el = sentEls[idx];
+  if (el){
+    el.classList.add('active');
+    var r = el.getBoundingClientRect();
+    if (r.top < innerHeight * 0.18 || r.bottom > innerHeight * 0.82){
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+  updateProgress();
+  savePos(idx);
+}
+
+function detectZh(text){
+  var cjk = 0, total = 0;
+  var lim = Math.min(text.length, 6000);
+  for (var i = 0; i < lim; i++){
+    var c = text.charCodeAt(i);
+    if (c > 32) total++;
+    if (c >= 0x4E00 && c <= 0x9FFF) cjk++;
+  }
+  return total > 0 && cjk / total > 0.25;
+}
+
+function hashText(t){
+  var h = 5381;
+  var s = t.slice(0, 4000) + '#' + t.length;
+  for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function countWords(text){
+  var latin = (text.match(/[A-Za-z0-9\u00C0-\u024F']+/g) || []).length;
+  var cjk = (text.match(/[\u3400-\u9FFF]/g) || []).length;
+  return latin + cjk;
+}
+
+function renderArticle(){
+  var art = $('article');
+  art.innerHTML = '';
+  sentEls = [];
+  var p = document.createElement('p');
+  for (var i = 0; i < sentences.length; i++){
+    (function(i){
+      var span = document.createElement('span');
+      span.className = 'sent';
+      span.textContent = sentences[i].text;
+      span.addEventListener('click', function(){ speakFrom(i); });
+      p.appendChild(span);
+      p.appendChild(document.createTextNode(' '));
+      sentEls.push(span);
+      if (sentences[i].last){ art.appendChild(p); p = document.createElement('p'); }
+    })(i);
+  }
+  if (p.childNodes.length) art.appendChild(p);
+}
+
+function loadDocument(text, name){
+  text = String(text || '').replace(/\r\n?/g, '\n').replace(/[\u00A0\u2007\u202F]/g, ' ');
+  var sents = splitSentences(text);
+  if (!sents.length){ status('No readable text was found in this file.', true); return; }
+  pausePlayback();
+  sentences = sents;
+  zhDoc = detectZh(text);
+  docHash = hashText(text);
+  populateVoices();
+  renderArticle();
+  $('loader').classList.add('hidden');
+  $('toolbar').style.display = 'block';
+  var words = countWords(text);
+  var total = fmtTime(remainingChars(0) / charsPerSec());
+  $('docmeta').textContent = name + ' · ' + words.toLocaleString() + ' words · about ' + total + ' at current speed';
+  idx = 0;
+  var saved = loadPos();
+  if (saved > 3 && saved < sentences.length){
+    idx = saved;
+    highlight();
+    status('Resumed at sentence ' + (saved + 1) + '. Press Play to continue or Restart to begin again.');
+  } else {
+    updateProgress();
+    status('Ready. Press Play, or click any sentence to start from there.');
+  }
+  window.scrollTo({ top: 0 });
+}
+
+function handleFile(file){
+  if (!file) return;
+  var name = file.name || 'Document';
+  var lower = name.toLowerCase();
+  status('Loading ' + name + ' …');
+  if (lower.slice(-5) === '.docx'){
+    file.arrayBuffer().then(extractDocxText).then(function(text){
+      loadDocument(text, name);
+    }).catch(function(err){
+      status('Could not read this file. ' + (err && err.message ? err.message : ''), true);
+    });
+  } else if (lower.slice(-4) === '.doc'){
+    status('This is an old .doc file. Please open it in Word, save it as .docx, and load it again.', true);
+  } else {
+    file.text().then(function(text){ loadDocument(text, name); }).catch(function(){
+      status('Could not read this file.', true);
+    });
+  }
+}
+
+function init(){
+  var st = loadSettings();
+  if (st.rate){ rate = st.rate; $('rate').value = rate; }
+  $('rateVal').textContent = rate.toFixed(1) + '×';
+  if (!('speechSynthesis' in window)){
+    status('This browser does not support speech output. Please use a current version of Chrome, Edge, Safari, or Firefox.', true);
+  } else {
+    populateVoices();
+    synth.onvoiceschanged = populateVoices;
+  }
+
+  $('dropzone').addEventListener('click', function(){ $('fileInput').click(); });
+  $('fileInput').addEventListener('change', function(e){ handleFile(e.target.files[0]); e.target.value = ''; });
+  ['dragover', 'dragenter'].forEach(function(t){
+    window.addEventListener(t, function(e){ e.preventDefault(); $('dropzone').classList.add('drag'); });
+  });
+  ['dragleave', 'drop'].forEach(function(t){
+    window.addEventListener(t, function(e){ e.preventDefault(); $('dropzone').classList.remove('drag'); });
+  });
+  window.addEventListener('drop', function(e){
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+
+  $('pasteBtn').addEventListener('click', function(){ loadDocument($('pasteArea').value, 'Pasted text'); });
+
+  $('playBtn').addEventListener('click', toggle);
+  $('backBtn').addEventListener('click', function(){ step(-1); });
+  $('fwdBtn').addEventListener('click', function(){ step(1); });
+  $('restartBtn').addEventListener('click', function(){ savePos(0); speakFrom(0); });
+  $('newDoc').addEventListener('click', function(){
+    pausePlayback();
+    sentences = []; sentEls = [];
+    $('article').innerHTML = '';
+    $('docmeta').textContent = '';
+    $('toolbar').style.display = 'none';
+    $('loader').classList.remove('hidden');
+    status('');
+  });
+
+  var rateTimer = null;
+  $('rate').addEventListener('input', function(e){
+    rate = parseFloat(e.target.value) || 1;
+    $('rateVal').textContent = rate.toFixed(1) + '×';
+    saveSettings(); updateProgress();
+    if (playing){
+      clearTimeout(rateTimer);
+      rateTimer = setTimeout(function(){ speakFrom(idx); }, 250);
+    }
+  });
+  $('voice').addEventListener('change', function(){
+    saveSettings();
+    if (playing) speakFrom(idx);
+  });
+
+  document.addEventListener('keydown', function(e){
+    var tag = ((e.target && e.target.tagName) || '').toLowerCase();
+    if (tag === 'textarea' || tag === 'input' || tag === 'select' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.code === 'Space'){ e.preventDefault(); toggle(); }
+    else if (e.key === 'ArrowLeft'){ e.preventDefault(); step(-1); }
+    else if (e.key === 'ArrowRight'){ e.preventDefault(); step(1); }
+  });
+
+  window.addEventListener('beforeunload', function(){ if (synth) synth.cancel(); });
+}
+init();
+})();
+</script>
+</body>
+</html>
