@@ -1,6 +1,6 @@
 # Read Aloud 🗣️
 
-A free, offline, single-file web page that reads Word documents, plain text, Markdown, or anything you paste out loud in your browser. 🫶
+A free, offline, single-file web page that reads Word documents, plain text, Markdown, or anything you paste out loud in your browser, with 140+ languages and 400+ natural voices and accents. . 🫶
 
 No account. No upload. No word limit. No subscription. Open the page, drop in a file or paste some text, press Play.✨
 
