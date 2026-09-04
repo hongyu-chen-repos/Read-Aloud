@@ -1,63 +1,56 @@
-# Read Aloud 🗣️
+Read Aloud 🗣️
 
-A free, offline, single-file web page that reads Word documents, plain text, Markdown, or anything you paste out loud in your browser, with 140+ languages and 400+ natural voices and accents. . 🫶
+A completely free, offline, single-file web page that reads Word documents, plain text, Markdown, or anything you paste right in your browser. It packs support for 140+ languages and 400+ natural voices and accents. 🫶
 
-No account. No upload. No word limit. No subscription. Open the page, drop in a file or paste some text, press Play.✨
-
-**Highlights**
-
-- Reads `.docx`, `.txt`, and `.md` files, and any pasted text (emails, web articles, notes, drafts)
-- Speaks any language your device has a voice for; Microsoft Edge alone ships free natural voices in roughly 50 languages, from Afrikaans to Zulu, with many regional accents
-- Sentence segmentation for most major writing systems, including Latin, Cyrillic, Chinese, Japanese, Korean, Arabic, Hebrew, Devanagari, and Spanish inverted punctuation
-- Fully private: the document is parsed inside your browser and nothing is transmitted anywhere
-- Sentence-by-sentence highlighting, click any sentence to jump, position remembered across sessions
-- One HTML file, zero dependencies, zero build step, zero tracking, zero cost
-
-## Features
-
-- Reads `.docx` files directly, parsed entirely inside the browser
-- Accepts `.txt` and `.md` files, and any pasted text
-- Speaks every language your device has a voice for, typically dozens on a modern system
-- Sentence-level control: the current sentence stays highlighted, and clicking any sentence starts playback from there
-- Play, pause, previous, next, and restart controls
-- Speed control (0.5× to 2×) and a ranked list of every available voice
-- Per-document position memory across sessions
-- Multilingual sentence segmentation, including mixed-language documents
-- Keyboard shortcuts: Space toggles playback, arrow keys move between sentences
-- Word count, progress bar, and an estimate of listening time remaining
-- Light and dark themes following your system preference
-- One HTML file, zero dependencies, zero network requests, zero tracking
-
-## Getting started
-
-1. Download `index.html` from this repository.
-2. Open it in a current browser (Chrome, Edge, Firefox, or Safari 16.4 and later).
-3. Drop a `.docx` file onto the page, or click to choose one, or paste text.
-4. Press Play.
-
-## Voice quality tips
+No accounts, no uploads, no word limits, no subscriptions. Just open the page, drop in a file or paste your text, and hit Play. ✨
 
 
-- **Microsoft Edge** includes free high-quality "Natural" voices in roughly 50 languages on any platform and is the best choice for the most human-sounding output.
-- **Safari on a Mac** exposes the best Apple system voices. Additional ones, including Siri voices, can be downloaded under System Settings, Accessibility, Spoken Content.
-- **Windows, macOS, iOS, and Android** all allow extra languages and voices to be installed in their speech or accessibility settings, and the page will list whatever is available.
+✨ What makes it great?
 
-## How it works
+- Reads almost anything: Drop in .docx, .txt, or .md files, or just paste in emails, web articles, and random notes.
+- A voice for every language: If your device has a voice for it, this tool can speak it. Microsoft Edge is the real MVP here, shipping with free natural voices in about 50 languages and tons of regional accents.
+- Smart sentence detection: It handles punctuation rules for Latin, Cyrillic, Chinese, Japanese, Korean, Arabic, Hebrew, Devanagari, and even Spanish inverted punctuation seamlessly.
+100% private: Everything is parsed right inside your browser. Nothing gets uploaded anywhere.
+- Total control: The current sentence highlights as it reads. Click any sentence to jump to it. It even remembers where you left off across sessions.
+- Pure and simple: One HTML file. Zero dependencies, zero build steps, zero tracking, zero cost.
 
-A `.docx` file is a ZIP archive. The page locates `word/document.xml` by reading the archive's central directory, decompresses it with the browser's native `DecompressionStream`, and extracts the text runs while skipping deleted text and field codes. The text is then segmented into sentences using punctuation rules that cover Latin, Cyrillic, CJK, Korean, Arabic, Hebrew, Devanagari, and Spanish conventions, with overlong sentences chunked at clause boundaries. Sentences are sent to `speechSynthesis` one at a time, which enables per-sentence highlighting and navigation and also avoids the known browser defect where long utterances stop partway through. Reading position and settings are stored in `localStorage`.
 
-## Limitations
+🚀 Getting started
 
-- Playback is real-time only. The Web Speech API does not expose an audio stream, so the tool cannot export an MP3.
-- Voice naturalness is bounded by the voices your device provides.
-- Legacy binary `.doc` files are not supported; resave them as `.docx` first.
-- Languages written without sentence-ending punctuation, such as Thai, fall back to clause-length chunking.
-- Very old browsers without `DecompressionStream` cannot unpack `.docx` files, though pasted text still works.
+  1. Download index.html from this repo.
+  2. Open it in any modern browser (Chrome, Edge, Firefox, or Safari 16.4+).
+  3. Drag a .docx file onto the page, click to choose one, or just paste text.
+  4. Hit Play!
 
-## Customizing
 
-Everything lives in one file, so changes are direct edits with no build step. Practical starting points include the `MAX` chunk length in `chunkLong`, the abbreviation list in `splitSentences`, the voice ranking in `voiceScore`, the keyboard shortcuts in `init`, and the CSS variables at the top for colors and typography.
+💡 Voice quality tips
 
-## License
+- Microsoft Edge is your best bet for human-sounding speech. It includes free, high-quality "Natural" voices in roughly 50 languages across any platform.
+- Safari on Mac taps into the best Apple system voices. Want more? You can grab extra ones (including Siri) under System Settings > Accessibility > Spoken Content.
+- Any device (Windows, macOS, iOS, Android) lets you install extra languages and voices in their speech or accessibility settings. This page will automatically find and list whatever you have available.
 
-MIT. See [LICENSE](LICENSE).
+
+🔧 How it works
+
+A .docx file is actually just a ZIP archive. This page digs into the archive's central directory, grabs word/document.xml, decompresses it using the browser's native DecompressionStream, and pulls out the text while ignoring deleted text and field codes. It then slices the text into sentences using a smart set of punctuation rules (covering Latin, Cyrillic, CJK, Korean, Arabic, Hebrew, Devanagari, and Spanish). Sentences that are way too long get chunked at clause boundaries.
+
+Instead of dumping a whole document to the speech engine at once, it feeds sentences to speechSynthesis one by one. This allows for precise highlighting and navigation, and neatly avoids that annoying browser bug where long passages suddenly stop playing halfway through. Your reading position and settings are safely tucked away in localStorage.
+
+
+💁🏻‍♀️ Honest limitations
+
+- Real-time only: The Web Speech API doesn't expose an audio stream, so you can't export to an MP3.
+Voice quality varies: How natural it sounds depends entirely on the voices built into your device.
+- Legacy .doc isn't supported: You'll need to resave those as .docx first.
+- Punctuation-free languages: Languages like Thai, which don't use sentence-ending punctuation, fall back to clause-length chunking.
+- Old browsers: If your browser doesn't support DecompressionStream, you can't unpack .docx files (though pasted text will still work just fine).
+
+
+🛠️ Customizing
+
+Because everything lives in a single HTML file, there's no build step—just open it in a code editor and tweak away! Good places to start: the MAX chunk length in chunkLong, the abbreviation list in splitSentences, the voice ranking in voiceScore, keyboard shortcuts in init, and the CSS variables at the top for typography and colors.
+
+
+📄 License
+
+MIT. See LICENSE for details.
