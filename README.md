@@ -1,6 +1,6 @@
 # Read Aloud 🗣️
 
-Free, offline, single-file browser tool for reading `.docx`, `.txt`, `.md`, and pasted text. Supports 140+ languages and 400+ voices. No accounts, no uploads, no limits.
+Read Aloud is a free, offline, single-file browser tool for reading `.docx`, `.txt`, `.md`, and pasted text. Supports 140+ languages and 400+ voices. No accounts, no uploads, no limits.
 
 ## ✨ Features
 - **Broad File Support:** Drop `.docx`, `.txt`, `.md`, or paste text directly.
