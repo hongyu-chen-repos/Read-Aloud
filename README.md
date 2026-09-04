@@ -48,7 +48,7 @@ Voice quality varies: How natural it sounds depends entirely on the voices built
 
 ## 🛠️ Customizations
 
-As everything lives in a single HTML file, there's no build step—just open it in a code editor and tweak away! Good places to start: the MAX chunk length in chunkLong, the abbreviation list in splitSentences, the voice ranking in voiceScore, keyboard shortcuts in init, and the CSS variables at the top for typography and colors.
+As everything lives in a single HTML file, there's no build step. Just open it in a code editor and tweak away! Good places to start: the MAX chunk length in chunkLong, the abbreviation list in splitSentences, the voice ranking in voiceScore, keyboard shortcuts in init, and the CSS variables at the top for typography and colors.
 
 
 ## 📄 License
